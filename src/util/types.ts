@@ -14,3 +14,21 @@ export type TimezoneDetails = {
   utc_offset: string;
   week_number: number;
 };
+
+export type Timer = {
+  id: string;
+  seconds: number;
+  startFrom: number;
+  running: boolean;
+};
+
+export enum Time {
+  Hour = 'hour',
+  Min = 'min',
+  Sec = 'sec',
+}
+
+export enum ComponentType {
+  Input = 'input',
+  Timer = 'timer',
+}

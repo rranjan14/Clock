@@ -1,3 +1,4 @@
+import {useEffect} from 'react';
 import {Platform, PixelRatio, Dimensions} from 'react-native';
 
 const {width, height} = Dimensions.get('window');
@@ -29,3 +30,38 @@ export function formattedTimeDifference(difference: number): string {
     String(seconds).padStart(2, '0')
   );
 }
+
+type useIntervalProps = {
+  time: {
+    ms: number;
+    inmediate?: boolean;
+  };
+  callback: any;
+  dependencies: React.DependencyList;
+};
+
+export const useInterval = (
+  {ms, inmediate = true}: useIntervalProps['time'],
+  callback: useIntervalProps['callback'],
+  dependencies: useIntervalProps['dependencies'] = [],
+) =>
+  useEffect(() => {
+    inmediate && callback();
+    const interval = setInterval(callback, ms);
+    return () => {
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, dependencies);
+
+export const timeInSeconds = ({
+  hours,
+  mins,
+  secs,
+}: {
+  hours: string;
+  mins: string;
+  secs: string;
+}) => {
+  return +hours * 3600 + +mins * 60 + +secs;
+};

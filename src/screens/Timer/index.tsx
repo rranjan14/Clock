@@ -1,143 +1,97 @@
-import React, {useEffect, useState} from 'react';
-import {View, useWindowDimensions, FlatList} from 'react-native';
-import {v4 as uuidv4} from 'uuid';
+/* eslint-disable react/no-unstable-nested-components */
+import React, {useContext, useState} from 'react';
+import {View, useWindowDimensions, FlatList, Alert} from 'react-native';
 
-import FloatingActionButton from '../../components/FloatingActionButton';
-import TimerCard, {
-  ComponentType,
-  Time,
-  TimerCardProps,
-} from '../../components/TimerCard';
+import TimerCard from '../../components/TimerCard';
+import {TimerContext} from '../../context/timer';
+import {timeInSeconds} from '../../util/helper';
+import {Time} from '../../util/types';
 import styles from './style';
+import TimerInput from './TimerInput';
 
 const Timer = () => {
   const {height, width} = useWindowDimensions();
+  const {createTimer, deleteTimer, getTimer, getTimers, updateTimer} =
+    useContext(TimerContext);
   const style = styles(height, width);
-  const [timers, setTimers] = useState<TimerCardProps[]>([]);
+  const [hour, setHour] = useState<string>('00');
+  const [min, setMin] = useState<string>('00');
+  const [sec, setSec] = useState<string>('00');
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const newTimersList = timers.map(t =>
-        t.isPlaying
-          ? {
-              ...t,
-              initialTime: Math.max(0, t.initialTime - 1),
-              isPlaying: t.initialTime === 0 ? false : t.isPlaying,
-            }
-          : t,
-      );
-      setTimers(newTimersList);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timers]);
-
-  const createNewTimer = () => {
-    setTimers(prev => [
-      ...prev,
-      {
-        id: uuidv4(),
-        componentType: ComponentType.Input,
-        height: height,
-        width: width,
-        hour: 0,
-        initialTime: 0,
-        isPlaying: false,
-        min: 0,
-        sec: 0,
-        onChangeText: onChangeText,
-        startTimer: startButtonPress,
-        updateTimer: updateTimer,
-        deleteTimer: deleteTimer,
-      },
-    ]);
-  };
-
-  const onChangeText = (text: string, type: Time, id: string) => {
-    const currentTimerIndex = timers.findIndex(timer => timer.id === id);
-    let currentTimer = timers[currentTimerIndex];
-    let newTimersList = [...timers];
-    if (currentTimer) {
-      if (type === Time.Hour) {
-        if (+text <= 23 && +text >= 0) {
-          currentTimer = {...currentTimer, hour: +text};
-          newTimersList[currentTimerIndex] = currentTimer;
-          setTimers(newTimersList);
-        }
-      } else if (type === Time.Min) {
-        if (+text <= 59 && +text >= 0) {
-          currentTimer = {...currentTimer, min: +text};
-          newTimersList[currentTimerIndex] = currentTimer;
-          setTimers(newTimersList);
-        }
-      } else if (type === Time.Sec) {
-        if (+text <= 59 && +text >= 0) {
-          currentTimer = {...currentTimer, sec: +text};
-          newTimersList[currentTimerIndex] = currentTimer;
-          setTimers(newTimersList);
-        }
-      }
+  const onChangeText = (text: string, type: Time) => {
+    if (isNaN(+text)) {
+      Alert.alert('Error', 'Please enter a valid number');
+      return;
+    }
+    const number = +text;
+    if (type === Time.Hour) {
+      setHour(number.toString().padStart(2, '0'));
+    } else if (type === Time.Min) {
+      setMin(number.toString().padStart(2, '0'));
+    } else if (type === Time.Sec) {
+      setSec(number.toString().padStart(2, '0'));
     }
   };
 
-  const updateTimer = (id: string, currentTime: number) => {
-    const currentTimerIndex = timers.findIndex(timer => timer.id === id);
-    let currentTimer = timers[currentTimerIndex];
-    let newTimersList = [...timers];
-    currentTimer = {...currentTimer, initialTime: currentTime};
-    newTimersList[currentTimerIndex] = currentTimer;
-    setTimers(newTimersList);
+  const onDeleteTimer = (timerId: string) => {
+    deleteTimer(timerId);
   };
 
-  const startButtonPress = (id: string) => {
-    const currentTimerIndex = timers.findIndex(timer => timer.id === id);
-    let currentTimer = timers[currentTimerIndex];
-    let newTimersList = [...timers];
-
-    const finalTime =
-      currentTimer.initialTime === 0
-        ? currentTimer.hour * 60 * 60 + currentTimer.min * 60 + currentTimer.sec
-        : currentTimer.initialTime;
-    currentTimer = {
-      ...currentTimer,
-      initialTime: finalTime,
-      componentType: ComponentType.Timer,
-      isPlaying: !currentTimer.isPlaying,
-    };
-    newTimersList[currentTimerIndex] = currentTimer;
-
-    setTimers(newTimersList);
+  const onStartTimer = (timerId: string) => {
+    const timer = getTimer(timerId);
+    if (timer) {
+      updateTimer(timerId, {
+        ...timer,
+        running: true,
+        startFrom: Date.now(),
+      });
+    }
   };
 
-  const deleteTimer = (id: string) => {
-    let newTimersList = timers.filter(t => t.id !== id);
-    setTimers(newTimersList);
+  const onStopTimer = (timerId: string) => {
+    const timer = getTimer(timerId);
+    if (timer) {
+      updateTimer(timerId, {...timer, running: false});
+    }
+  };
+
+  const onCreateTimer = () => {
+    const seconds = timeInSeconds({
+      hours: hour,
+      mins: min,
+      secs: sec,
+    });
+    createTimer(seconds);
+    setHour('00');
+    setMin('00');
+    setSec('00');
   };
 
   return (
     <View style={style.container}>
-      <FloatingActionButton
-        height={height}
-        width={width}
-        onPress={createNewTimer}
-      />
       <FlatList
-        data={timers}
+        data={getTimers()}
         style={style.flatListContainer}
+        ListHeaderComponent={() => (
+          <TimerInput
+            height={height}
+            width={width}
+            hour={hour}
+            min={min}
+            sec={sec}
+            onChangeText={onChangeText}
+            saveTimer={onCreateTimer}
+          />
+        )}
+        stickyHeaderIndices={[0]}
         renderItem={({item}) => (
           <TimerCard
             height={height}
             width={width}
-            componentType={item.componentType}
-            hour={item.hour}
-            isPlaying={item.isPlaying}
-            min={item.min}
-            sec={item.sec}
-            onChangeText={onChangeText}
-            id={item.id}
-            initialTime={item.initialTime}
-            startTimer={startButtonPress}
-            updateTimer={updateTimer}
-            deleteTimer={deleteTimer}
+            timer={item}
+            onStart={onStartTimer}
+            onStop={onStopTimer}
+            deleteTimer={onDeleteTimer}
           />
         )}
         keyExtractor={item => item.id}

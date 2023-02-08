@@ -34,19 +34,18 @@ export function formattedTimeDifference(difference: number): string {
 type useIntervalProps = {
   time: {
     ms: number;
-    inmediate?: boolean;
   };
   callback: any;
   dependencies: React.DependencyList;
 };
 
 export const useInterval = (
-  {ms, inmediate = true}: useIntervalProps['time'],
+  {ms}: useIntervalProps['time'],
   callback: useIntervalProps['callback'],
   dependencies: useIntervalProps['dependencies'] = [],
 ) =>
   useEffect(() => {
-    inmediate && callback();
+    callback();
     const interval = setInterval(callback, ms);
     return () => {
       clearInterval(interval);
